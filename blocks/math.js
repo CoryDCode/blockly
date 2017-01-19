@@ -34,27 +34,23 @@ goog.require('Blockly.Blocks');
  */
 Blockly.Blocks.math.HUE = 230;
 
-Blockly.Blocks['math_number'] = {
-  /**
-   * Block for numeric value.
-   * @this Blockly.Block
-   */
-  init: function() {
-    this.setHelpUrl(Blockly.Msg.MATH_NUMBER_HELPURL);
-    this.setColour(Blockly.Blocks.math.HUE);
-    this.appendDummyInput()
-        .appendField(new Blockly.FieldNumber('0'), 'NUM');
-    this.setOutput(true, 'Number');
-    // Assign 'this' to a variable for use in the tooltip closure below.
-    var thisBlock = this;
-    // Number block is trivial.  Use tooltip of parent block if it exists.
-    this.setTooltip(function() {
-      var parent = thisBlock.getParent();
-      return (parent && parent.getInputsInline() && parent.tooltip) ||
-          Blockly.Msg.MATH_NUMBER_TOOLTIP;
-    });
+Blockly.defineBlocksWithJsonArray([
+  // Block for numeric value.
+  {
+    "type": "math_number",
+    "message0": "%1",
+    "args0": [{
+      "type": "field_number",
+      "name": "NUM",
+      "value": 0
+    }],
+    "output": "Number",
+    "colour": "%{BKY_MATH_HUE}",
+    "helpUrl": "%{BKY_MATH_NUMBER_HELPURL}",
+    "tooltip": "%{BKY_MATH_NUMBER_TOOLTIP}",
+    "extensions": ["parent_tooltip_when_inline"]
   }
-};
+]);
 
 Blockly.Blocks['math_arithmetic'] = {
   /**

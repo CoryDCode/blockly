@@ -320,7 +320,6 @@ Blockly.WorkspaceSvg.prototype.createDom = function(opt_backgroundClass) {
    *   [Trashcan and/or flyout may go here]
    *   <g class="blocklyBlockCanvas"></g>
    *   <g class="blocklyBubbleCanvas"></g>
-   *   [Scrollbars may go here]
    * </g>
    * @type {SVGElement}
    */
@@ -875,26 +874,18 @@ Blockly.WorkspaceSvg.prototype.recordDeleteAreas = function() {
  * Is the mouse event over a delete area (toolbox or non-closing flyout)?
  * Opens or closes the trashcan and sets the cursor as a side effect.
  * @param {!Event} e Mouse move event.
- * @return {boolean} True if event is in a delete area.
+ * @return {?number} Null if not over a delete area, or an enum representing
+ *     which delete area the event is over.
  */
 Blockly.WorkspaceSvg.prototype.isDeleteArea = function(e) {
   var xy = new goog.math.Coordinate(e.clientX, e.clientY);
-  if (this.deleteAreaTrash_) {
-    if (this.deleteAreaTrash_.contains(xy)) {
-      this.trashcan.setOpen_(true);
-      Blockly.Css.setCursor(Blockly.Css.Cursor.DELETE);
-      return true;
-    }
-    this.trashcan.setOpen_(false);
+  if (this.deleteAreaTrash_ && this.deleteAreaTrash_.contains(xy)) {
+    return Blockly.DELETE_AREA_TRASH;
   }
-  if (this.deleteAreaToolbox_) {
-    if (this.deleteAreaToolbox_.contains(xy)) {
-      Blockly.Css.setCursor(Blockly.Css.Cursor.DELETE);
-      return true;
-    }
+  if (this.deleteAreaToolbox_ && this.deleteAreaToolbox_.contains(xy)) {
+    return Blockly.DELETE_AREA_TOOLBOX;
   }
-  Blockly.Css.setCursor(Blockly.Css.Cursor.CLOSED);
-  return false;
+  return null;
 };
 
 /**
@@ -1008,7 +999,7 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
   // TODO: Remove terminateDrag and compensate for coordinate skew during zoom.
   Blockly.terminateDrag_();
   // The vertical scroll distance that corresponds to a click of a zoom button.
-  const PIXELS_PER_ZOOM_STEP = 50;
+  var PIXELS_PER_ZOOM_STEP = 50;
   var delta = -e.deltaY / PIXELS_PER_ZOOM_STEP;
   var position = Blockly.utils.mouseToSvg(e, this.getParentSvg(),
       this.getInverseScreenCTM());

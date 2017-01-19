@@ -24,8 +24,8 @@
  * @author madeeha@google.com (Madeeha Ghori)
  */
 
-blocklyApp.WorkspaceTreeComponent = ng.core.Component({
-  selector: 'blockly-workspace-tree',
+blocklyApp.WorkspaceBlockComponent = ng.core.Component({
+  selector: 'blockly-workspace-block',
   template: `
     <li [id]="idMap['blockRoot']" role="treeitem" class="blocklyHasChildren"
         [attr.aria-labelledBy]="generateAriaLabelledByAttr(idMap['blockSummary'], 'blockly-translate-workspace-block')"
@@ -44,10 +44,10 @@ blocklyApp.WorkspaceTreeComponent = ng.core.Component({
             </blockly-field-segment>
           </li>
 
-          <blockly-workspace-tree *ngIf="blockInput.connection && blockInput.connection.targetBlock()"
-                                  [block]="blockInput.connection.targetBlock()" [level]="level + 1"
-                                  [tree]="tree">
-          </blockly-workspace-tree>
+          <blockly-workspace-block *ngIf="blockInput.connection && blockInput.connection.targetBlock()"
+                                   [block]="blockInput.connection.targetBlock()" [level]="level + 1"
+                                   [tree]="tree">
+          </blockly-workspace-block>
           <li #inputList [id]="idMap['inputList' + i]" role="treeitem"
               *ngIf="blockInput.connection && !blockInput.connection.targetBlock()"
               [attr.aria-labelledBy]="generateAriaLabelledByAttr(idMap['inputMenuLabel' + i], 'blockly-submenu-indicator')"
@@ -65,15 +65,15 @@ blocklyApp.WorkspaceTreeComponent = ng.core.Component({
       </ol>
     </li>
 
-    <blockly-workspace-tree *ngIf= "block.nextConnection && block.nextConnection.targetBlock()"
-                            [block]="block.nextConnection.targetBlock()"
-                            [level]="level" [tree]="tree">
-    </blockly-workspace-tree>
+    <blockly-workspace-block *ngIf= "block.nextConnection && block.nextConnection.targetBlock()"
+                             [block]="block.nextConnection.targetBlock()"
+                             [level]="level" [tree]="tree">
+    </blockly-workspace-block>
   `,
   directives: [blocklyApp.FieldSegmentComponent, ng.core.forwardRef(function() {
-    return blocklyApp.WorkspaceTreeComponent;
+    return blocklyApp.WorkspaceBlockComponent;
   })],
-  inputs: ['block', 'level', 'tree', 'isTopLevel'],
+  inputs: ['block', 'level', 'tree'],
   pipes: [blocklyApp.TranslatePipe]
 })
 .Class({
@@ -176,10 +176,10 @@ blocklyApp.WorkspaceTreeComponent = ng.core.Component({
     // Angular change detection.)
     var that = this;
     setTimeout(function() {
-      if (that.tree && that.isTopLevel && !that.tree.id) {
-        that.tree.id = that.utilsService.generateUniqueId();
+      if (that.tree && that.level === 0 && !that.tree.id) {
+        that.tree.id = 'blockly-' + Blockly.utils.genUid();
       }
-      if (that.tree && that.isTopLevel &&
+      if (that.tree && that.level === 0 &&
           !that.treeService.getActiveDescId(that.tree.id)) {
         that.treeService.setActiveDesc(that.idMap['blockRoot'], that.tree.id);
       }
@@ -198,8 +198,7 @@ blocklyApp.WorkspaceTreeComponent = ng.core.Component({
     }
   },
   generateAriaLabelledByAttr: function(mainLabel, secondLabel) {
-    return this.utilsService.generateAriaLabelledByAttr(
-        mainLabel, secondLabel);
+    return mainLabel + (secondLabel ? ' ' + secondLabel : '');
   },
   getBlockNeededLabel: function(blockInput) {
     // The input type name, or 'any' if any official input type qualifies.

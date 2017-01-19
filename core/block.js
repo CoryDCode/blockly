@@ -29,6 +29,7 @@ goog.provide('Blockly.Block');
 goog.require('Blockly.Blocks');
 goog.require('Blockly.Comment');
 goog.require('Blockly.Connection');
+goog.require('Blockly.Extensions');
 goog.require('Blockly.Input');
 goog.require('Blockly.Mutator');
 goog.require('Blockly.Warning');
@@ -139,7 +140,7 @@ Blockly.Block = function(workspace, prototypeName, opt_id) {
     this.type = prototypeName;
     var prototype = Blockly.Blocks[prototypeName];
     goog.asserts.assertObject(prototype,
-        'Error: "%s" is an unknown language block.', prototypeName);
+        'Error: Unknown block type "%s".', prototypeName);
     goog.mixin(this, prototype);
   }
 
@@ -157,8 +158,7 @@ Blockly.Block = function(workspace, prototypeName, opt_id) {
   }
   // Bind an onchange function, if it exists.
   if (goog.isFunction(this.onchange)) {
-    this.onchangeWrapper_ = this.onchange.bind(this);
-    this.workspace.addChangeListener(this.onchangeWrapper_);
+    this.setOnChange(this.onchange);
   }
 };
 
@@ -642,6 +642,29 @@ Blockly.Block.prototype.setColour = function(colour) {
 };
 
 /**
+ * Sets a callback function to use whenever the block's parent workspace
+ * changes, replacing any prior onchange handler. This is usually only called
+ * from the constructor, the block type initializer function, or an extension
+ * initializer function.
+ * @param {function(Blockly.Events.Abstract)} onchangeFn The callback to call
+ *     when the block's workspace changes.
+ * @throws {Error} if onchangeFn is not falsey or a function.
+ */
+Blockly.Block.prototype.setOnChange = function(onchangeFn) {
+  if (onchangeFn && !goog.isFunction(onchangeFn)) {
+    throw new Error("onchange must be a function.");
+  }
+  if (this.onchangeWrapper_) {
+    this.workspace.removeChangeListener(this.onchangeWrapper_);
+  }
+  this.onchange = onchangeFn;
+  if (this.onchange) {
+    this.onchangeWrapper_ = onchangeFn.bind(this);
+    this.workspace.addChangeListener(this.onchangeWrapper_);
+  }
+};
+
+/**
  * Returns the named field from a block.
  * @param {string} name The name of the field.
  * @return {Blockly.Field} Named field, or null if field does not exist.
@@ -964,7 +987,10 @@ Blockly.Block.prototype.jsonInit = function(json) {
 
   // Set basic properties of block.
   if (json['colour'] !== undefined) {
-    this.setColour(json['colour']);
+    var rawValue = json['colour'];
+    var colour = goog.isString(rawValue) ?
+        Blockly.utils.replaceMessageReferences(rawValue) : rawValue;
+    this.setColour(colour);
   }
 
   // Interpolate the message blocks.
@@ -989,10 +1015,21 @@ Blockly.Block.prototype.jsonInit = function(json) {
     this.setNextStatement(true, json['nextStatement']);
   }
   if (json['tooltip'] !== undefined) {
-    this.setTooltip(json['tooltip']);
+    var rawValue = json['tooltip'];
+    var localizedText = Blockly.utils.replaceMessageReferences(rawValue);
+    this.setTooltip(localizedText);
   }
   if (json['helpUrl'] !== undefined) {
-    this.setHelpUrl(json['helpUrl']);
+    var rawValue = json['helpUrl'];
+    var localizedValue = Blockly.utils.replaceMessageReferences(rawValue);
+    this.setHelpUrl(localizedValue);
+  }
+  if (Array.isArray(json['extensions'])) {
+    var extensionNames = json['extensions'];
+    for (var i = 0; i < extensionNames.length; ++i) {      
+      var extensionName = extensionNames[i];
+      Blockly.Extensions.apply(extensionName, this);
+    }
   }
 };
 
@@ -1334,4 +1371,40 @@ Blockly.Block.prototype.moveBy = function(dx, dy) {
  */
 Blockly.Block.prototype.makeConnection_ = function(type) {
   return new Blockly.Connection(this, type);
+};
+
+/**
+ * Recursively checks whether all statement and value inputs are filled with
+ * blocks. Also checks all following statement blocks in this stack.
+ * @param {boolean=} opt_shadowBlocksAreFilled An optional argument controlling
+ *     whether shadow blocks are counted as filled. Defaults to true.
+ * @return {boolean} True if all inputs are filled, false otherwise.
+ */
+Blockly.Block.prototype.allInputsFilled = function(opt_shadowBlocksAreFilled) {
+  // Account for the shadow block filledness toggle.
+  if (opt_shadowBlocksAreFilled === undefined) {
+    opt_shadowBlocksAreFilled = true;
+  }
+  if (!opt_shadowBlocksAreFilled && this.isShadow()) {
+    return false;
+  }
+
+  // Recursively check each input block of the current block.
+  for (var i = 0, input; input = this.inputList[i]; i++) {
+    if (!input.connection) {
+      continue;
+    }
+    var target = input.connection.targetBlock();
+    if (!target || !target.allInputsFilled(opt_shadowBlocksAreFilled)) {
+      return false;
+    }
+  }
+
+  // Recursively check the next block after the current block.
+  var next = this.getNextBlock();
+  if (next) {
+    return next.allInputsFilled(opt_shadowBlocksAreFilled);
+  }
+
+  return true;
 };
