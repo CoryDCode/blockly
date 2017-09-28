@@ -521,6 +521,7 @@ Blockly.Css.CONTENT = [
 
   '.blocklyTreeRoot {',
     'padding: 4px 0;',
+    '-webkit-tap-highlight-color:rgba(0,0,0,0);';
   '}',
 
   '.blocklyTreeRoot:focus {',
